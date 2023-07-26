@@ -1,0 +1,5 @@
+C:\project\obj\Debug\project.csproj.AssemblyReference.cache
+C:\project\obj\Debug\BI_CPV_tool.Form1.resources
+C:\project\obj\Debug\BI_CPV_tool.Properties.Resources.resources
+C:\project\obj\Debug\project.csproj.GenerateResource.cache
+C:\project\obj\Debug\project.csproj.CoreCompileInputs.cache
