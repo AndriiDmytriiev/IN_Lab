@@ -114,114 +114,105 @@ public class ExcelService
 }
     
 public partial class Form1 : Form
+{
+    // R.net engine
+    internal REngine engine; // R.net object working with R code libraries
+
+    // UI-related variables
+    private System.Drawing.Printing.PrintDocument docToPrint = new System.Drawing.Printing.PrintDocument();
+    public static FormWindowState LastWindowState;
+
+    // Connection and Database-related variables
+    public static string connectionString = ""; // The string of connection to DB
+    public static string strSQLfiltered = "";  // SQL query after data filter
+    public static string strQuery = "";        // SQL query string
+    public static string strQuery2 = "";       // Another SQL query string
+    public static string strQuery3 = "";       // Third query string
+    public static string strQuery4 = "";       // Fourth query string
+
+    // Excel and Data Table variables
+    public static string strExcelFileName = ""; // The name of Excel file after filtering data
+    public static DataTable dt = null; // Data Table Object where input Excel file is exported
+    public static string strFileName = ""; // Input Excel file name
+    public static string[] arrDataGridView = new DataGridView[1000]; // Array of DataGridViews linked to the number of loaded input files
+    public static int intCounterDataGridViews = 0; // Counter for the number of loaded input files
+
+    // File path and directory-related variables
+    public static string strRscript = ""; // First line from app.ini file - real MS SQL connection string
+    public static string strRpath = ""; // Second line from app.ini file (not used anymore)
+    public static string strDataDir = ""; // Third line from app.ini file - Input R code file
+    public static string strOutputDir = ""; // Forth line from app.ini file - Output calculation folder
+    public static string strCalcID = ""; // Fifth line from app.ini file - Output calculation folder with plots
+
+    // Calculation and filter-related variables
+    public static string strLaufNRDateMin = ""; // Minimal LaufNR
+    public static string strLaufNRDateMax = ""; // Maximal LaufNR
+    public static bool dateIsGood = false; // Check date on dd.mm.yyyy
+    public static bool filterOn = false; // Verifying if the filter button was pressed
+    public static string strFilterExclude = ""; // Excluding OZID filter (not used)
+    public static string strHasID = ""; // The flag defining the first Excel file column "ID"
+    public static string strFilterLaufnr = ""; // Used in filter
+    public static string strOZID = ""; // Saving Virt_Ozid in calculation search
+
+    // Flags and states
+    public static bool filterIsOn = false; // The flag defining the filter is enabled
+    public static bool blnFlag = false; // Boolean flag
+    public static bool stopCalc = false; // Stop calculation flag
+    public static bool blnPressed = false; // Used in plot reflection
+
+    // Parameters for calculation and logic
+    public static int last = 1; // Used in progress bar
+    public static int intMaxPoints = 200000; // The number of max rows imported from input Excel file
+    public static string[] strArrToolTip = new string[500];
+    public static string[] strArg = { "", "", "" }; // Input arguments for R code file
+    public static string[] strArr = { "" }; // Not used
+    public static string[] strArr2 = new string[500]; // Used in calculation compare
+    public static string[] arr1 = new string[500]; // Used in logic of calculation compare
+    public static string[] arr2 = new string[500]; // Used in logic of calculation compare
+    public static string[] arr3 = new string[500]; // Used in logic of calculation compare
+    public static string[] strArrToolTip = new string[500]; // Tooltip array for UI elements
+
+    // Calculation view and result variables
+    public static int ID = 0; // Field in table CalcResultView
+    public static int intIndex = 0; // Used just as 0
+    public static string NParameterTotal = ""; // NParameterTotal parameter in Calculation View
+    public static string NStatistically = ""; // NStatistically parameter in Calculation View
+    public static string PercentStatistically = ""; // PercentStatistically parameter in Calculation View
+    public static string DoNotFitStatistically = ""; // DoNotFitStatistically parameter in Calculation View
+    public static string CalcID = ""; // CalcID field in many tables
+
+    // Output and status-related variables
+    public static string strOutPutPath = ""; // Output path
+    public static string TimePointData = ""; // TimePointData field
+    public static string TimePointCalc = ""; // TimePointCalc field
+    public static string Note = ""; // Note field
+
+    // Status tracking variables
+    public static string Status_fit_statistically = ""; // Status_fit_statistically
+    public static string Num_VIRT_OZID_not_fit_stat = ""; // Num_VIRT_OZID_not_fit_stat
+    public static string Percent_of_values_status_KPI0_KPI3 = ""; // Percent_of_values_status_KPI0_KPI3
+    public static string Num_of_values_status_KPI0_KPI3 = ""; // Num_of_values_status_KPI0_KPI3
+    public static string RelevantForDiscussion = ""; // Relevant For Discussion flag
+    public static string KPI0 = ""; // KPI0 field in table VIRT_OZID_per_calculation
+    public static string KPI1 = ""; // KPI1 field in table VIRT_OZID_per_calculation
+    public static string KPI2 = ""; // KPI2 field in table VIRT_OZID_per_calculation
+    public static string KPI3 = ""; // KPI3 field in table VIRT_OZID_per_calculation
+    public static string GraphID = ""; // GraphID in table VIRT_OZID_per_calculation
+
+    // Miscellaneous
+    public static string strInitialDate = ""; // "from" date
+    public static string strEndDate = ""; // "to" date
+    public static string Additional_note = ""; // Field in table VIRT_OZID_per_calculation
+    public static int[,] intParameters = new int[200, 3]; // Array of control sizes and coordinates in minimal form
+    public string[,] strMatrix = new string[500, 15]; // The matrix contains dynamic rows of data  
+    public static int strRowsCount = 0; // Quantity of rows in dynamic data block
+    public static string strFilter = ""; // The variable of filter conditions
+
+    public Boolean IsInteger(string strNum) // Defining if the string is integer
     {
-        
-
-   
-        internal REngine engine;// R.net object working with R code libraries
-        public Form1()
-        {
-            InitializeComponent();
-            tabMain.SelectedIndexChanged += new EventHandler(tabMain_Click);
-        }
-        // Declare the PrintDocument object.
-        private System.Drawing.Printing.PrintDocument docToPrint =
-            new System.Drawing.Printing.PrintDocument();
-        public static string connectionString = "";  //The string of connction to DB     
-        public static Boolean filterIsOn = false;     //The flag defining the filter is enabled   
-        public static float intMaxPoints = 200000;  // The number of max rows imported from input Excel file     
-        public static string strExcelFileName;  // The name of Excel file after filtering data     
-        public static DataGridView[] arrDataGridView = new DataGridView[1000]; //array of datagridviews linked to the quantity of loaded input files 
-        public static int intCounterDataGridViews = 0; // counter of array of datagridviews linked to the quantity of loaded input files 
-        public static string strFilterExclude = "";// Excluding OZID filter (not used)
-        public static string strFileName = ""; // input excel file name
-        public static string strRscript = "";// first line from app.ini file - real MS SQL connection string
-        public static string strRpath = "";// second line from app.ini file  (not used any more)
-        public static string strDataDir = "";// third line from app.ini file - Input R code file
-        public static string strOutputDir = "";// forth line from app.ini file - Output calculation folder
-        public static string strCalcID = "";// fifth line from app.ini file - Output calculation folder with plots
-        public static string strSQLfiltered = "";// SQL quesry after data filter
-        public static string strLaufNRDateMin = "";// minimal LaufNR
-        public static string strLaufNRDateMax = "";// maximal LaufNR
-        public static bool dateIsGood = false;// check date on dd.mm.yyyy
-        public static bool filterOn = false; // verifying if the filter button was pressed
-        public static DataTable dt = null;// Data Table Object where input Excel file is exported
-        public static string[] strArrToolTip = new string[500];
-        public static FormWindowState LastWindowState;
-        public static string[] strArg = { "", "", "" };// input arguments for r code file
-        public static string strHasID = "";// The flag defining first excel file column "ID"
-        public static string strInitialDate = "";// "from" date 
-        public static string strEndDate = "";// "to" date 
-        public static int last = 1;//used in progressbar
-        public static string[] strArr = { "" };//not used
-        public static string[] strArr2 = new string[500];//used in calculation compare
-        public static int ID = 0;//field in table CalcResultView
-        public static int intIndex = 0;//used just as 0
-        public static string NParameterTotal = "";//NParameterTotal parameter in Calculation View
-        public static string NStatistically = "";//NStatistically parameter in Calculation View
-        public static string PercentStatistically = "";// PercentStatistically parameter in Calculation View
-        public static string DoNotFitStatistically = "";//DoNotFitStatistically parameter in Calculation View
-        public static string CalcID = "";// CalcID field in many tables
-        public static string User = "";//
-        public static string TimePointData = "";//
-        public static string TimePointCalc = "";//
-        public static string Note = "";//
-        public static int Active = 0;//
-        public static Boolean IsCalcIDAvailable = false;//
-        public static Boolean IsCalcIDAvailable3 = false;//
-        public static Boolean IsCalcIDAvailable4 = false;//
-        public static string strOutPutPath = "";//
-        public static string strQuery3 = "";//
-        public static string strQuery4 = "";//
-        public static string OZID = "";//
-        public static string TotalN = "";//
-        public static string VIRT_OZID = "";//
-        public static string FitStatistically = "";//
-        public static string Additional_note = "";// field in table VIRT_OZID_per_calculation
-
-
-        public static string Status_fit_statistically = "";//Status_fit_statistically
-        public static string Num_VIRT_OZID_not_fit_stat = "";//Num_VIRT_OZID_not_fit_stat
-        public static string Percent_of_values_status_KPI0_KPI3 = "";//Percent_of_values_status_KPI0_KPI3
-        public static string Num_of_values_status_KPI0_KPI3 = "";//Num_of_values_status_KPI0_KPI3
-        public static string RelevantForDiscussion = "";//Relevant For Discussion flag
-        public static string KPI0 = "";//  field in table VIRT_OZID_per_calculation
-        public static string KPI1 = "";//field in table VIRT_OZID_per_calculation
-        public static string KPI2 = "";//field in table VIRT_OZID_per_calculation
-        public static string KPI3 = "";//field in table VIRT_OZID_per_calculation
-        public static string GraphID = "";// GraphID in table VIRT_OZID_per_calculation
-        public static string[] arr1 = new string[500];//used in  logic of calculation compare
-        public static string[] arr2 = new string[500];//used in  logic of calculation compare
-        public static string[] arr3 = new string[500];//used in  logic of calculation compare
-        public static string strFilterLaufnr = "";//used in filter
-        public static string strOZID = "";//saving Virt_Ozid in calculation search
-        public static bool blnPressed = false;// used in plot reflection
-        public string[,] strMatrix = new string[500, 15];// the mastrix contains dynamic rows of data  
-        public static int[,] intParameters = new int[200, 3];// array of contorls size and coordinates in minimal form
-
-        public static string strQuery = ""; // it contains sql query
-        public static string strQuery2 = ""; // it is contains sql query
-        public static int strRowsCount = 0; // Quantity of rows in dynamic data block
-        public static string strFilter = ""; // The variable of filter coditions
-
-
-        public static bool blnFlag = false; // boolean flag
-
-        public static bool stopCalc = false;// Stop calculation flag
-
-
-
-        public Boolean IsInteger(string strNum) // Defining if the string is integer
-
-        {
-            string x = strNum;
-            if (int.TryParse(x, out int value))
-            {
-                return true;
-            }
-            else
-                return false;
-        }
+        return int.TryParse(strNum, out _);
+    }
+}
 
        
         
