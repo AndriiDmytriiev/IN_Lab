@@ -19,6 +19,99 @@ using System.Drawing.Drawing2D;
 
 namespace BI_CPV_tool
 {
+// Interface for reading Excel files
+public interface IExcelReader
+{
+    DataTable ReadExcel(string path);
+}
+
+// Interface for processing the data table
+public interface IDataProcessor
+{
+    void ProcessData(DataTable dataTable);
+}
+    // Concrete implementation of IExcelReader
+public class ExcelReader : IExcelReader
+{
+    public DataTable ReadExcel(string path)
+    {
+        try
+        {
+            using (Stream inputStream = File.OpenRead(path))
+            {
+                using (ExcelEngine excelEngine = new ExcelEngine())
+                {
+                    IApplication application = excelEngine.Excel;
+                    IWorkbook workbook = application.Workbooks.Open(inputStream);
+                    IWorksheet worksheet = workbook.Worksheets[0];
+
+                    return worksheet.ExportDataTable(worksheet.UsedRange["A1:AA300000"], ExcelExportDataTableOptions.ColumnNames);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(ex.ToString());
+            return null;
+        }
+    }
+}
+// Concrete implementation of IDataProcessor
+public class DataProcessor : IDataProcessor
+{
+    public void ProcessData(DataTable dataTable)
+    {
+        if (dataTable.Columns[0].ColumnName == "PRODUKTCODE")
+        {
+            dataTable.Columns.Add("SORT_DATE1", typeof(DateTime)).SetOrdinal(1);
+            dataTable.Columns.Add("TS_ABS1", typeof(DateTime)).SetOrdinal(2);
+        }
+        else
+        {
+            dataTable.Columns.Add("SORT_DATE1", typeof(DateTime)).SetOrdinal(2);
+            dataTable.Columns.Add("TS_ABS1", typeof(DateTime)).SetOrdinal(3);
+        }
+
+        foreach (DataRow r1 in dataTable.Rows)
+        {
+            string f = r1["SORT_DATE"].ToString();
+            string h = r1["TS_ABS"].ToString();
+
+            if (f == "01.01.0001 00:00:00") f = r1["TS_ABS"].ToString();
+            if (h == "01.01.0001 00:00:00") h = r1["TS_ABS"].ToString();
+
+            r1["TS_ABS1"] = DateTime.Parse(h);
+            r1["SORT_DATE1"] = DateTime.Parse(f);
+        }
+
+        dataTable.Columns.Remove("TS_ABS");
+        dataTable.Columns.Remove("SORT_DATE");
+
+        dataTable.Columns["TS_ABS1"].ColumnName = "TS_ABS";
+        dataTable.Columns["SORT_DATE1"].ColumnName = "SORT_DATE";
+    }
+}
+// High-level class that orchestrates reading and processing
+public class ExcelService
+{
+    private readonly IExcelReader _excelReader;
+    private readonly IDataProcessor _dataProcessor;
+
+    public ExcelService(IExcelReader excelReader, IDataProcessor dataProcessor)
+    {
+        _excelReader = excelReader;
+        _dataProcessor = dataProcessor;
+    }
+
+    public DataTable ReadAndProcessExcel(string path)
+    {
+        DataTable dataTable = _excelReader.ReadExcel(path);
+        if (dataTable == null) return null;
+
+        _dataProcessor.ProcessData(dataTable);
+        return dataTable;
+    }
+}
     
 public partial class Form1 : Form
     {
@@ -230,69 +323,7 @@ public partial class Form1 : Form
         }
 
 
-        public DataTable READExcel(string path)// Export excel file to table object
-        {
-            try { 
-            using (Stream inputStream = File.OpenRead(path))
-            {
-                using (ExcelEngine excelEngine = new ExcelEngine())
-                {
-                    IApplication application = excelEngine.Excel;
-                    IWorkbook workbook = application.Workbooks.Open(inputStream);
-                    IWorksheet worksheet = workbook.Worksheets[0];
-
-                    DataTable dataTable = worksheet.ExportDataTable(worksheet.UsedRange["A1:AA300000"], ExcelExportDataTableOptions.ColumnNames);
-                    //MessageBox.Show(dataTable.Columns.Count.ToString());
-                    if (dataTable.Columns[0].ColumnName == "PRODUKTCODE") { 
-
-                    dataTable.Columns.Add("SORT_DATE1", typeof(DateTime)).SetOrdinal(1);
-                    dataTable.Columns.Add("TS_ABS1", typeof(DateTime)).SetOrdinal(2);
-                            
-                            blnFlag = true;
-                    }
-                    else
-                    {
-                        
-                        dataTable.Columns.Add("SORT_DATE1", typeof(DateTime)).SetOrdinal(2);
-                        dataTable.Columns.Add("TS_ABS1", typeof(DateTime)).SetOrdinal(3);
-                        blnFlag = false;
-                    }
-                    var f = "";
-                    var h = "";
-                    var l = 1;
-                    foreach (DataRow r1 in dataTable.Rows)
-                    {
-                        f = r1["SORT_DATE"].ToString();
-                        if (f == "01.01.0001 00:00:00")
-                            f = r1["TS_ABS"].ToString();
-                        h = r1["TS_ABS"].ToString();
-                        if (h == "01.01.0001 00:00:00")
-                            h = r1["TS_ABS"].ToString(); 
-                        r1["TS_ABS1"] = DateTime.Parse(h);
-                        r1["SORT_DATE1"] = DateTime.Parse(f);
-                       
-                        
-
-
-                    }
-                    
-                    dataTable.Columns.Remove("TS_ABS");
-                    dataTable.Columns.Remove("SORT_DATE");
-                    
-                    dataTable.Columns["TS_ABS1"].ColumnName = "TS_ABS";
-                    dataTable.Columns["SORT_DATE1"].ColumnName = "SORT_DATE";
-                        
-
-                        return dataTable;
-                }
-            }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.ToString());
-                return null;
-            }
-        }
+       
 
 
 
@@ -481,7 +512,13 @@ public partial class Form1 : Form
 
             var strFile = strOutputDirMod + strCalcID + "\\" + getAllCSVFiles[0].ToString();
 
-            dt = READExcel(strFile);
+        IExcelReader excelReader = new ExcelReader();
+        IDataProcessor dataProcessor = new DataProcessor();
+        ExcelService excelService = new ExcelService(excelReader, dataProcessor);
+
+        
+        dt = excelService.ReadAndProcessExcel(strFile);
+            
             //if (dt.Columns.Count > 24) { 
             //dt.Columns.RemoveAt(25); dt.Columns.RemoveAt(26);
             //}
@@ -688,7 +725,13 @@ public partial class Form1 : Form
                                 DataTable dtTable = new DataTable();
                                 dt = (DataTable)dataGridViewRaw.DataSource;
                                 dynamic dWorkSheet = null;
-                                dt = READExcel(strExcelFileName.Replace("//", "/"));
+                                IExcelReader excelReader = new ExcelReader();
+                                IDataProcessor dataProcessor = new DataProcessor();
+                                ExcelService excelService = new ExcelService(excelReader, dataProcessor);
+
+        
+                                dt = excelService.ReadAndProcessExcel(strExcelFileName.Replace("//", "/"));
+                               
                                 dt.Columns.Add("UserID"); dt.Columns.Add("ModifiedDate"); dt.Columns.Add("GraphID"); dt.Columns.Add("CalcID"); dt.Columns.Add("FilterID");
                             }
 
@@ -2577,8 +2620,12 @@ public partial class Form1 : Form
                         DataTable dtRanges = new DataTable();
                         //dtTable = new DataTable();
                         //dt = (DataTable)dataGridViewRaw.DataSource;
-                       
-                        dt = READExcel(openFileDialog1.FileName.ToString()); //GetDataFromExcel(strFileName, dWorkSheet);
+                        IExcelReader excelReader = new ExcelReader();
+                        IDataProcessor dataProcessor = new DataProcessor();
+                        ExcelService excelService = new ExcelService(excelReader, dataProcessor);
+
+                        string filePath = @"C:\path\to\your\excel.xlsx";
+                        dt = excelService.ReadAndProcessExcel(openFileDialog1.FileName.ToString()); 
                         con = new SqlConnection(@connectionString);
                         oconn = new SqlCommand("Select * From Products", con);
                         oconn.CommandTimeout = 180;
